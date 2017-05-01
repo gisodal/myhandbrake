@@ -1,0 +1,142 @@
+#!/bin/bash
+
+# presets
+SPEED="veryslow"
+RF=20
+SUBTITLE="1"
+AUDIO="1"
+DURATION=10
+
+
+usage(){
+    echo "Usage: encode -i <input> -o <output> [options]"
+    echo "    options:"
+    echo "     -i,--input <input>        Input file or folder"
+    echo "     -o,--output <output>      The extension of the outputfile determines its container"
+    echo "     -s,--speed <speed>        Speed indicators for x264 (default: $SPEED)"
+    echo "     -p,--preview <seconds>    Create preview starting at <seconds>"
+    echo "     -d,--duration <seconds>   Set duration of preview in seconds (default: $DURATION)"
+    echo "     -a,--audio <tracks>       Comma separated list of audio tracks, e.g. \"1,2,5\" (default: \"$AUDIO\")"
+    echo "     -u,--subtitle <tracks>    Comma separated list of subtitle tracks, e.g. \"1,4\" (default: \"$SUBTITLE\")"
+    echo "     -q,--quality <RF-factor>  Quality RF factor, 0 is lossless, 50 is unwatchable (default: $RF)"
+    echo "     -h,--help"
+}
+
+# parse arguments
+while [[ $# -gt 0 ]]; do
+    key="$1"
+    case $key in
+        -i|--input)
+            INPUT="$2"
+            shift
+            ;;
+        -o|--output)
+            OUTPUT="$2"
+            shift
+            ;;
+        -s|--speed)
+            SPEED="$2"
+            shift
+            ;;
+        -p|--preview)
+            START="$2"
+            shift
+            ;;
+        -d|--duration)
+            DURATION="$2"
+            shift
+            ;;
+        -a|--audio)
+            AUDIO="$2"
+            shift
+            ;;
+        -u|--subtitle)
+            SUBTITLE="$2"
+            shift
+            ;;
+        -q|--quality)
+            RF="$2"
+            shift
+            ;;
+        -h|--help)
+            usage
+            exit 0
+            ;;
+        *)
+            echo "Unknown option: $1" 1>&2
+        ;;
+    esac
+    shift
+done
+
+# check required args
+if [ "$INPUT" == "" -o "$OUTPUT" == "" ]; then
+   echo "Please provide input and output files. Check --help." 1>&2
+   exit 1
+fi
+
+# check input
+if [ ! -f $INPUT -a ! -d $INPUT ]; then
+    echo "Input '$INPUT' does not exist" 1>&2
+    exit 1
+fi
+
+# check output
+if [ -f "$OUTPUT" ]; then
+    echo "Output '$OUTPUT' already exists" 1>&2
+    exit 1
+fi
+
+# check speed option
+SPEED_OPTIONS=("ultrafast"  "superfast"  "veryfast"  "faster"  "fast"  \
+    "medium"  "slow"  "slower"  "veryslow"  "placebo")
+NR_SPEED_OPTIONS=${#SPEED_OPTIONS[@]}
+for((i=0; i < $NR_SPEED_OPTIONS; i++)); do
+    SPEED_OPTION=${SPEED_OPTIONS[$i]}
+    if [ "$SPEED_OPTION" == "$SPEED" ]; then
+        break;
+    fi
+    if [ $i -eq $((${NR_SPEED_OPTIONS}-1)) ]; then
+        echo "Speed option must be equal to:" 1>&2
+        for((j=0; j < $NR_SPEED_OPTIONS; j++)); do
+            SPEED_OPTION=${SPEED_OPTIONS[$j]}
+            echo "    $SPEED_OPTION" 1>&2
+        done
+        exit 1
+    fi
+done
+
+if [ "$START" != "" ]; then
+    OPTIONAL="--start-at duration:$START --stop-at duration:$DURATION"
+fi
+
+ENCODE_OPTIONS=cabac=1:ref=5:analyse=0x133:me=umh:subme=9:chroma-me=1:\
+deadzone-inter=21:deadzone-intra=11:b-adapt=2:rc-lookahead=60:\
+vbv-maxrate=10000:vbv-bufsize=10000:qpmax=69:bframes=5:b-adapt=2:\
+direct=auto:crf-max=51:weightp=2:merange=24:chroma-qp-offset=-1:\
+sync-lookahead=2:psy-rd=1.00,0.15:trellis=2:min-keyint=23:\
+partitions=all
+
+
+HandBrakeCLI                    \
+    --input "$INPUT"            \
+    --output "$OUTPUT"          \
+    --encoder-preset $SPEED     \
+    --preset $SPEED             \
+    --aencoder av_acc           \
+    --ab 128k                   \
+    --mixdown dpl2              \
+    --arate 44.1                \
+    --encoder x264              \
+    --quality $RF               \
+    --cfr                       \
+    --decomb                    \
+    --encopts $ENCODE_OPTIONS   \
+    --loose-crop                \
+    --crop 0:0:0:0              \
+    --strict-anamorphic         \
+    --keep-display-aspect       \
+    --subtitle \"$SUBTITLE\"    \
+    --audio \"$AUDIO\"          \
+    $OPTIONAL
+
