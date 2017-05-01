@@ -83,8 +83,11 @@ fi
 
 # check output
 if [ -f "$OUTPUT" ]; then
-    echo "Output '$OUTPUT' already exists" 1>&2
-    exit 1
+    read -n 1 -p "Overwrite $OUTPUT? (y/N) \n" answer
+    if [ "$answer" != "y" ]; then
+        echo "Output '$OUTPUT' already exists" 1>&2
+        exit 1
+    fi
 fi
 
 # check speed option
