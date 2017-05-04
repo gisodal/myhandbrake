@@ -109,8 +109,13 @@ for((i=0; i < $NR_SPEED_OPTIONS; i++)); do
     fi
 done
 
+OPTIONAL=""
 if [ "$START" != "" ]; then
-    OPTIONAL="--start-at duration:$START --stop-at duration:$DURATION"
+    OPTIONAL+=" --start-at duration:$START --stop-at duration:$DURATION"
+fi
+
+if [ "$SUBTITLE" != "" ]; then
+    OPTIONAL+=" --subtitle \"$SUBTITLE\""
 fi
 
 ENCODE_OPTIONS=cabac=1:ref=5:analyse=0x133:me=umh:subme=9:chroma-me=1:\
@@ -120,26 +125,24 @@ direct=auto:crf-max=51:weightp=2:merange=24:chroma-qp-offset=-1:\
 sync-lookahead=2:psy-rd=1.00,0.15:trellis=2:min-keyint=23:\
 partitions=all
 
-
-HandBrakeCLI                    \
-    --input "$INPUT"            \
-    --output "$OUTPUT"          \
-    --encoder-preset $SPEED     \
-    --preset $SPEED             \
-    --aencoder av_acc           \
-    --ab 128k                   \
-    --mixdown dpl2              \
-    --arate 44.1                \
-    --encoder x264              \
-    --quality $RF               \
-    --cfr                       \
-    --decomb                    \
-    --encopts $ENCODE_OPTIONS   \
-    --loose-crop                \
-    --crop 0:0:0:0              \
-    --strict-anamorphic         \
-    --keep-display-aspect       \
-    --subtitle "$SUBTITLE"      \
-    --audio "$AUDIO"            \
+#exec -a myhandbrake HandBrakeCLI \
+HandBrakeCLI \
+    --input "$INPUT"             \
+    --output "$OUTPUT"           \
+    --encoder-preset $SPEED      \
+    --aencoder av_acc            \
+    --ab 128k                    \
+    --mixdown dpl2               \
+    --arate 44.1                 \
+    --encoder x264               \
+    --quality $RF                \
+    --cfr                        \
+    --decomb                     \
+    --encopts $ENCODE_OPTIONS    \
+    --loose-crop                 \
+    --crop 0:0:0:0               \
+    --auto-anamorphic            \
+    --keep-display-aspect        \
+    --audio "$AUDIO"             \
     $OPTIONAL
 
